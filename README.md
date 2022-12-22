@@ -2,6 +2,8 @@
 
 This is code and datasets for Self-EA
 
+The complete project code and data can be downloaded from here (https://drive.google.com/file/d/1KhbL0Ie2zW_PYv3TeO9AVEm1kUARhy_d/view?usp=sharing)
+
 ### Dependencies
 
 - Python 3 (tested on 3.7.2)
