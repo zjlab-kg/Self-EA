@@ -1,4 +1,3 @@
-import argparse
 import copy
 
 import torch
@@ -15,6 +14,7 @@ from Batch_TrainData_Generator import Batch_TrainData_Generator
 from train_func import train
 import numpy as np
 from GCN_mode import *
+
 
 def fixed(seed):
     random.seed(seed)
@@ -70,7 +70,7 @@ def entlist2emb(Model, entids, entid2data, cuda_num):
     batch_token_ids = torch.LongTensor(batch_token_ids).cuda(cuda_num)
     batch_mask_ids = torch.FloatTensor(batch_mask_ids).cuda(cuda_num)
 
-    batch_emb = Model(batch_token_ids, batch_mask_ids,entids)
+    batch_emb = Model(batch_token_ids, batch_mask_ids, entids)
     del batch_token_ids
     del batch_mask_ids
     return batch_emb
@@ -79,7 +79,7 @@ def entlist2emb(Model, entids, entid2data, cuda_num):
 def main():
     # read data
     print("start load data....")
-    ent_ill, train_ill, test_ill,index2rel, index2entity, rel2index, entity2index, ent2data, rel_triples_1, rel_triples_2, imgdata = read_data()
+    ent_ill, train_ill, test_ill, index2rel, index2entity, rel2index, entity2index, ent2data, rel_triples_1, rel_triples_2, imgdata = read_data()
     print("---------------------------------------")
     print("all entity ILLs num:", len(ent_ill))
     print("rel num:", len(index2rel))
@@ -93,7 +93,8 @@ def main():
     ENT_NUM = len(ent2data)
 
     # Model = Basic_Bert_Unit_model(MODEL_INPUT_DIM, MODEL_OUTPUT_DIM)
-    Model = combine_model(ENT_NUM,triples)
+    Model = combine_model(ENT_NUM, triples)
+
     Model.cuda(CUDA_NUM)
     # if torch.cuda.device_count() >1:
     #     Model = nn.DataParallel(Model)
@@ -128,7 +129,7 @@ def main():
     # training data generator(can generate batch-size training data)
     Train_gene = Batch_TrainData_Generator(train_ill, ent1, ent2, index2entity, batch_size=TRAIN_BATCH_SIZE,
                                            neg_num=NEG_NUM)
-    train(Model, Criterion, Optimizer, Train_gene, train_ill, test_ill, ent2data, imgdata,triples)
+    train(Model, Criterion, Optimizer, Train_gene, train_ill, test_ill, ent2data, imgdata, triples)
     #
     # emb = []
     # ents = list(range(len(ent2data)))
@@ -143,4 +144,5 @@ def main():
 
 
 if __name__ == '__main__':
+    fixed(SEED_NUM)
     main()

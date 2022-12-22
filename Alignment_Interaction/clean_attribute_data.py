@@ -41,11 +41,11 @@ def read_att_data(data_path):
     """
     load attribute triples file.
     """
-    print("loading attribute triples file from: ",data_path)
+    print("loading attribute triples file from: ", data_path)
     att_data = []
-    with open(data_path,"r",encoding="utf-8") as f:
+    with open(data_path, "r", encoding="utf-8") as f:
         for line in f:
-            e,a,l = line.rstrip('\n').split(' ',2)
+            e, a, l = line.rstrip('\n').split(' ', 2)
             e = e.strip('<>')
             a = a.strip('<>')
             if "/property/" in a:
@@ -53,30 +53,27 @@ def read_att_data(data_path):
             else:
                 a = a.split(r'/')[-1]
             l = l.rstrip('@zhenjadefr .')
-            if len(l.rsplit('^^',1)) == 2:
-                l,l_type = l.rsplit("^^")
+            if len(l.rsplit('^^', 1)) == 2:
+                l, l_type = l.rsplit("^^")
             else:
                 l_type = 'string'
             l = l.strip("\"")
-            att_data.append((e,a,l,l_type)) #(entity,attribute,value,value_type)
+            att_data.append((e, a, l, l_type))  # (entity,attribute,value,value_type)
     return att_data
 
 
-
-def file_make(keep_data,remove_data,keep_file_name,remove_file_name):
+def file_make(keep_data, remove_data, keep_file_name, remove_file_name):
     """
     save
     """
-    with open(keep_file_name,"w",encoding="utf-8") as f:
-        for e,a,l,l_type in keep_data:
+    with open(keep_file_name, "w", encoding="utf-8") as f:
+        for e, a, l, l_type in keep_data:
             string = e + '\t' + a + '\t' + l + '\t' + l_type + '\n'
             f.write(string)
-    with open(remove_file_name,"w",encoding="utf-8") as f:
-        for e,a,l,l_type in remove_data:
+    with open(remove_file_name, "w", encoding="utf-8") as f:
+        for e, a, l, l_type in remove_data:
             string = e + '\t' + a + '\t' + l + '\t' + l_type + '\n'
             f.write(string)
-
-
 
 
 def sort_a(data_list):
@@ -97,66 +94,70 @@ def sort_a(data_list):
     return new_data_list
 
 
-
-def remove_one_to_N_att_data_by_threshold(ori_keep_data,ori_remove_data,one2N_threshold):
+def remove_one_to_N_att_data_by_threshold(ori_keep_data, ori_remove_data, one2N_threshold):
     """
     Filter noise attribute triples based on threshold
     """
     att_data = copy.deepcopy(ori_keep_data)
     ori_remove_data = copy.deepcopy(ori_remove_data)
     e_a2fre = dict()
-    for e,a,l,l_type in att_data:
-        if (e,a) not in e_a2fre:
-            e_a2fre[(e,a)] = 0
-        e_a2fre[(e,a)] += 1
+    for e, a, l, l_type in att_data:
+        if (e, a) not in e_a2fre:
+            e_a2fre[(e, a)] = 0
+        e_a2fre[(e, a)] += 1
     remove_set = set()
     for e_a in e_a2fre:
         if e_a2fre[e_a] > one2N_threshold:
             remove_set.add(e_a)
     keep_datas = []
     remove_datas = []
-    for e,a,l,l_type in att_data:
-        if (e,a) in remove_set:
-            remove_datas.append((e,a,l,l_type))
+    for e, a, l, l_type in att_data:
+        if (e, a) in remove_set:
+            remove_datas.append((e, a, l, l_type))
         else:
-            keep_datas.append((e,a,l,l_type))
+            keep_datas.append((e, a, l, l_type))
 
-    keep_datas.sort(key=lambda x:x[0])
-    remove_datas.sort(key=lambda x:x[0])
+    keep_datas.sort(key=lambda x: x[0])
+    remove_datas.sort(key=lambda x: x[0])
     keep_datas = sort_a(keep_datas)
     remove_datas = sort_a(remove_datas)
     print("Before removing noisy attribute triples, attribute triples {}".format(len(att_data)))
     remove_datas.extend(ori_remove_data)
-    print("remaining attribute_triples num {} ; noisy attribute_triples num {}".format(len(keep_datas), len(remove_datas)))
-    return keep_datas,remove_datas
+    print("remaining attribute_triples num {} ; noisy attribute_triples num {}".format(len(keep_datas),
+                                                                                       len(remove_datas)))
+    return keep_datas, remove_datas
 
 
-if __name__ == '__main__':
+def main():
     fixed(SEED_NUM)
     print("----------------clean attribute data--------------------")
     print("Start removing noise from attribute triples")
-    #load attribute triples
+    # load attribute triples
     keep_data_1 = read_att_data(DATA_PATH + LANG + '_att_triples')
     keep_data_2 = read_att_data(DATA_PATH + 'en' + '_att_triples')
 
     remove_data_1 = []
     remove_data_2 = []
 
-    #cleaned data save path:
+    # cleaned data save path:
     new_attribute_triple_1_file_path = DATA_PATH + 'new_att_triples_1'
     new_attribute_triple_2_file_path = DATA_PATH + 'new_att_triples_2'
     remove_attribute_triple_1_file_path = DATA_PATH + 'remove_att_triples_1'
     remove_attribute_triple_2_file_path = DATA_PATH + 'remove_att_triples_2'
 
-    #clean data.
-    keep_data_1, remove_data_1 = remove_one_to_N_att_data_by_threshold(keep_data_1,remove_data_1,one2N_threshold=3)
-    keep_data_2, remove_data_2 = remove_one_to_N_att_data_by_threshold(keep_data_2,remove_data_2,one2N_threshold=3)
+    # clean data.
+    keep_data_1, remove_data_1 = remove_one_to_N_att_data_by_threshold(keep_data_1, remove_data_1, one2N_threshold=3)
+    keep_data_2, remove_data_2 = remove_one_to_N_att_data_by_threshold(keep_data_2, remove_data_2, one2N_threshold=3)
 
     remove_data_1 = sort_a(remove_data_1)
     remove_data_2 = sort_a(remove_data_2)
     keep_data_1 = sort_a(keep_data_1)
     keep_data_2 = sort_a(keep_data_2)
 
-    #save.
-    file_make(keep_data_1,remove_data_1,new_attribute_triple_1_file_path,remove_attribute_triple_1_file_path)
-    file_make(keep_data_2,remove_data_2,new_attribute_triple_2_file_path,remove_attribute_triple_2_file_path)
+    # save.
+    file_make(keep_data_1, remove_data_1, new_attribute_triple_1_file_path, remove_attribute_triple_1_file_path)
+    file_make(keep_data_2, remove_data_2, new_attribute_triple_2_file_path, remove_attribute_triple_2_file_path)
+
+
+if __name__ == '__main__':
+    main()

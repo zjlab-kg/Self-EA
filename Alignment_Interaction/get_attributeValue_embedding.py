@@ -4,18 +4,12 @@ import logging
 logging.getLogger("transformers.tokenization_utils").setLevel(logging.ERROR)
 logging.basicConfig(level=logging.ERROR)
 import time
-import os
-import numpy as np
-import pickle
 from Param import *
 from read_data_func import *
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 from transformers import BertTokenizer
 from utils import fixed
-from Basic_Bert_Unit_model import Basic_Bert_Unit_model
-from GCN_mode import *
+from GCN_basic_bert_unit.Basic_Bert_Unit_model import Basic_Bert_Unit_model
+from GCN_basic_bert_unit.GCN_mode import *
 
 def get_tokens_of_value(vaule_list,Tokenizer,max_length):
     #return tokens of attributeValue
@@ -90,8 +84,7 @@ def main():
     bert_model_other_data_path = BASIC_BERT_UNIT_MODEL_SAVE_PATH + BASIC_BERT_UNIT_MODEL_SAVE_PREFIX + 'other_data.pkl'
     train_ill, test_ill, eid2data ,triples= pickle.load(open(bert_model_other_data_path, "rb"))
 
-    bert_model_path = BASIC_BERT_UNIT_MODEL_SAVE_PATH + BASIC_BERT_UNIT_MODEL_SAVE_PREFIX + "model_epoch_" \
-                      + str(LOAD_BASIC_BERT_UNIT_MODEL_EPOCH_NUM) + '.p'
+    bert_model_path = BASIC_BERT_UNIT_MODEL_SAVE_PATH + BASIC_BERT_UNIT_MODEL_SAVE_PREFIX + 'model.p'
     con_Model = combine_model(len(eid2data),triples=triples)
     con_Model.load_state_dict(torch.load(bert_model_path, map_location='cpu'))
     print("loading basic bert unit model from:  {}".format(bert_model_path))

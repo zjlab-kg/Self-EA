@@ -6,24 +6,29 @@ import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 import time
+
+from Param import *
 from utils import *
 import copy
 from torch.nn import init
 
+
 # class MlP(nn.Module):
-#     def __init__(self,input_dim,hidden_dim):
+#     def __init__(self, input_dim, hidden_dim):
 #         super(MlP, self).__init__()
 #         self.dense1 = nn.Linear(input_dim, hidden_dim, True)
 #         self.dense2 = nn.Linear(hidden_dim, 1, True)
 #         init.xavier_normal_(self.dense1.weight)
 #         init.xavier_normal_(self.dense2.weight)
-#     def forward(self,features):
-#         x = self.dense1(features)#[B,h]
+#
+#     def forward(self, features):
+#         x = self.dense1(features)  # [B,h]
 #         x = F.relu(x)
-#         x = self.dense2(x)#[B,1]
+#         x = self.dense2(x)  # [B,1]
 #         x = F.tanh(x)
-#         x = torch.squeeze(x,1)#[B]
+#         x = torch.squeeze(x, 1)  # [B]
 #         return x
+
 
 class MlP(nn.Module):
     def __init__(self, input_dim, hidden_dim):
@@ -31,12 +36,12 @@ class MlP(nn.Module):
         self.dense1 = nn.Linear(input_dim, 1, True)
         init.xavier_normal_(self.dense1.weight)
 
-
     def forward(self, features):
         x = self.dense1(features)  # [B,h]
         x = F.tanh(x)
         x = torch.squeeze(x, 1)  # [B]
         return x
+
 
 class Train_index_generator(object):
     def __init__(self, train_ill, train_candidate, entpair2f_idx, neg_num, batch_size):
@@ -59,14 +64,14 @@ class Train_index_generator(object):
         """
         train_pair_indexs = []
         for pe1, pe2 in self.train_ill:
-            neg_indexs = np.random.randint(len(self.train_candidate[pe1]),size=self.neg_num)
+            neg_indexs = np.random.randint(len(self.train_candidate[pe1]), size=self.neg_num)
             ne2_list = self.train_candidate[pe1][neg_indexs].tolist()
             for ne2 in ne2_list:
                 if ne2 == pe2:
                     continue
                 ne1 = pe1
                 train_pair_indexs.append((pe1, pe2, ne1, ne2))
-                #(pe1,pe2) is aligned entity pair, (ne1,ne2) is negative sample
+                # (pe1,pe2) is aligned entity pair, (ne1,ne2) is negative sample
         np.random.shuffle(train_pair_indexs)
         np.random.shuffle(train_pair_indexs)
         np.random.shuffle(train_pair_indexs)
@@ -101,11 +106,11 @@ def one_step_train(Model, Optimizer, Criterion, Train_gene, f_emb, cuda_num):
         neg_feature = f_emb[torch.LongTensor(neg_f_ids)].cuda(cuda_num)
         p_score = Model(pos_feature)
         n_score = Model(neg_feature)
-        p_score = p_score.unsqueeze(-1)#[B,1]
-        n_score = n_score.unsqueeze(-1)#[B,1]
+        p_score = p_score.unsqueeze(-1)  # [B,1]
+        n_score = n_score.unsqueeze(-1)  # [B,1]
         batch_size = p_score.shape[0]
-        label_y = torch.ones(p_score.shape).cuda(cuda_num) #if y == 1 mean: p_score should ranked higher.
-        batch_loss = Criterion(p_score, n_score, label_y)  #p_score > n_score
+        label_y = torch.ones(p_score.shape).cuda(cuda_num)  # if y == 1 mean: p_score should ranked higher.
+        batch_loss = Criterion(p_score, n_score, label_y)  # p_score > n_score
         epoch_loss += batch_loss.item() * batch_size
         batch_loss.backward()
         Optimizer.step()
@@ -114,7 +119,7 @@ def one_step_train(Model, Optimizer, Criterion, Train_gene, f_emb, cuda_num):
 
 def test(Model, test_candidate, test_ill, entpair2f_idx, f_emb, batch_size, cuda_num, test_topk):
     test_ill_set = set(test_ill)
-    test_pairs = []#all candidate entity pairs of Test set.
+    test_pairs = []  # all candidate entity pairs of Test set.
     for e1 in [a for a, b in test_ill]:
         for e2 in test_candidate[e1]:
             test_pairs.append((e1, e2))
@@ -142,7 +147,7 @@ def test(Model, test_candidate, test_ill, entpair2f_idx, f_emb, batch_size, cuda
             e1_to_e2andscores[e1] = []
         e1_to_e2andscores[e1].append((e2, score, label))
 
-    all_test_num = len(e1_to_e2andscores.keys()) # test set size.
+    all_test_num = len(e1_to_e2andscores.keys())  # test set size.
     result_labels = []
     for e, value_list in e1_to_e2andscores.items():
         v_list = value_list
@@ -168,17 +173,31 @@ def test(Model, test_candidate, test_ill, entpair2f_idx, f_emb, batch_size, cuda
         MRR += (1 / (i + 1)) * result_labels[i]
     MRR /= all_test_num
     print("MRR:", MRR)
+    return topk_list[1 - 1], topk_list[10 - 1]
 
 
 def train(Model, Optimizer, Criterion, Train_gene, f_emb_list, test_candidate, test_ill,
           entpair2f_idx, epoch_num, eval_num, cuda_num, test_topk):
     feature_emb = torch.FloatTensor(f_emb_list)
     print("start training interaction model!")
+    maxHit1, maxHit10, epc = 0, 0, 0
     for epoch in range(epoch_num):
         start_time = time.time()
         epoch_loss = one_step_train(Model, Optimizer, Criterion, Train_gene, feature_emb, cuda_num)
         print("Epoch {} loss {:.4f} using time {:.3f}".format(epoch, epoch_loss, time.time() - start_time))
-        if (epoch + 1) % eval_num == 0 and epoch != 0 :
+        if (epoch + 1) % eval_num == 0 and epoch != 0:
             start_time = time.time()
-            test(Model, test_candidate, test_ill, entpair2f_idx, feature_emb, 2048, cuda_num, test_topk)
+            hit1, hit10 = test(Model, test_candidate, test_ill, entpair2f_idx, feature_emb, 2048, cuda_num, test_topk)
+            if maxHit1 < hit1:
+                maxHit1, maxHit10, epc = hit1, hit10, epoch
             print("test using time {:.3f}".format(time.time() - start_time))
+    saveResult(maxHit1, maxHit10, epc)
+
+
+def saveResult(hit1, hit10, epc):
+    with open(ResultFile, 'a') as f:
+        f.write('epoch : ' + str(epc))
+        f.write('    result hit 1 : ' + str(hit1))
+        f.write('    hit 10 : ' + str(hit10))
+        f.write('\n')
+        f.write('\n')

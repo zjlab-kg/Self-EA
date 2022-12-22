@@ -14,8 +14,8 @@ import pickle
 import time
 from Param import *
 from utils import fixed, cos_sim_mat_generate, batch_topk
-from Basic_Bert_Unit_model import Basic_Bert_Unit_model
-from GCN_mode import *
+from GCN_basic_bert_unit.Basic_Bert_Unit_model import Basic_Bert_Unit_model
+from GCN_basic_bert_unit.GCN_mode import *
 
 
 def candidate_generate(ents1, ents2, ent_emb, candidate_topk=50, bs=32, cuda_num=0):
@@ -37,7 +37,6 @@ def candidate_generate(ents1, ents2, ent_emb, candidate_topk=50, bs=32, cuda_num
     return ent2candidates
 
 
-
 def all_entity_pairs_gene(candidate_dict_list, ill_pair_list):
     # generate list of all candidate entity pairs.
     entity_pairs_list = []
@@ -54,6 +53,7 @@ def all_entity_pairs_gene(candidate_dict_list, ill_pair_list):
 
 
 def main():
+    fixed(SEED_NUM)
     print("----------------get entity embedding--------------------")
     cuda_num = CUDA_NUM
     batch_size = 256
@@ -70,8 +70,9 @@ def main():
 
     # load basic bert unit model
 
-    bert_model_path = BASIC_BERT_UNIT_MODEL_SAVE_PATH + BASIC_BERT_UNIT_MODEL_SAVE_PREFIX + "model_epoch_" \
-                      + str(LOAD_BASIC_BERT_UNIT_MODEL_EPOCH_NUM) + '.p'
+    # bert_model_path = BASIC_BERT_UNIT_MODEL_SAVE_PATH + BASIC_BERT_UNIT_MODEL_SAVE_PREFIX + "model_epoch_" \
+    #                   + str(LOAD_BASIC_BERT_UNIT_MODEL_EPOCH_NUM) + '.p'
+    bert_model_path = BASIC_BERT_UNIT_MODEL_SAVE_PATH + BASIC_BERT_UNIT_MODEL_SAVE_PREFIX + "model" + '.p'
     Model = combine_model(len(eid2data), triples=triples)
     Model.load_state_dict(torch.load(bert_model_path, map_location='cpu'))
     print("loading basic bert unit model from:  {}".format(bert_model_path))
@@ -92,7 +93,8 @@ def main():
             token_inputs.append(token_input)
             mask_inputs.append(mask_input)
         vec = Model(torch.LongTensor(token_inputs).cuda(cuda_num),
-                    torch.FloatTensor(mask_inputs).cuda(cuda_num), list(range(eid, min(eid + batch_size, len(eid2data.keys())))))
+                    torch.FloatTensor(mask_inputs).cuda(cuda_num),
+                    list(range(eid, min(eid + batch_size, len(eid2data.keys())))))
         ent_emb.extend(vec.detach().cpu().tolist())
     print("get entity embedding using time {:.3f}".format(time.time() - start_time))
     print("entity embedding shape: ", np.array(ent_emb).shape)
@@ -108,7 +110,7 @@ def main():
     train_ids_1 = [e1 for e1, e2 in train_ill]
     train_ids_2 = [e2 for e1, e2 in train_ill]
     train_candidates = candidate_generate(train_ids_1, train_ids_2, ent_emb, CANDIDATE_NUM, bs=2048,
-                                             cuda_num=CUDA_NUM)
+                                          cuda_num=CUDA_NUM)
     test_candidates = candidate_generate(test_ids_1, test_ids_2, ent_emb, CANDIDATE_NUM, bs=2048, cuda_num=CUDA_NUM)
     pickle.dump(train_candidates, open(TRAIN_CANDIDATES_PATH, "wb"))
     print("save candidates for training ILL data....")
@@ -119,14 +121,13 @@ def main():
     entity_pairs = all_entity_pairs_gene([train_candidates, test_candidates], [train_ill])
     pickle.dump(entity_pairs, open(ENT_PAIRS_PATH, "wb"))
     turelink = 0
-    for (h,r) in entity_pairs:
-        if (h,r) in test_ill:
-            turelink +=1
-    print("tureNum:{} testNum:{} rate:{}".format(turelink,len(test_ill),turelink/len(test_ill)))
+    for (h, r) in entity_pairs:
+        if (h, r) in test_ill:
+            turelink += 1
+    print("tureNum:{} testNum:{} rate:{}".format(turelink, len(test_ill), turelink / len(test_ill)))
     print("save entity_pairs save....")
     print("entity_pairs num: {}".format(len(entity_pairs)))
 
 
 if __name__ == '__main__':
-    fixed(SEED_NUM)
     main()

@@ -1,7 +1,10 @@
 from transformers import BertModel
 import torch
 import torch.nn as nn
-from Param import *
+
+model_file = '../transformers'
+model_name = 'bert-base-multilingual-cased'
+
 
 class Basic_Bert_Unit_model(nn.Module):
     def __init__(self, input_size, result_size):
@@ -14,12 +17,8 @@ class Basic_Bert_Unit_model(nn.Module):
 
     def forward(self, batch_word_list, attention_mask):
         x = self.bert_model(input_ids=batch_word_list, attention_mask=attention_mask)  # token_type_ids =token_type_ids
-        sequence_output = x.last_hidden_state
+        sequence_output, pooled_output = x
         cls_vec = sequence_output[:, 0]
         output = self.dropout(cls_vec)
         output = self.out_linear_layer(output)
         return output
-
-
-
-

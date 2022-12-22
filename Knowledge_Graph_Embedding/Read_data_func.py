@@ -1,5 +1,6 @@
-import argparse
 import pickle
+
+import argparse
 from transformers import BertTokenizer
 import logging
 from Param import *
@@ -145,13 +146,12 @@ def read_data(data_path=DATA_PATH, des_dict_path=DES_DICT_PATH):
     train_ill = ills[:int(len(ills) // 1 * TRAIN_ILL_RATE)]
     test_ill = ills[int(len(ills) // 1 * TRAIN_ILL_RATE):]
     train_ill = train_ill[:UNSUP_K]
-
     #
     if TILL:
-        train_ill = read_triple(data_path+"/tills")
+        train_ill = read_triple(data_path + "/tills")
     imgdata = img(ids1, ids2, ills)
     if UNSUP:
-        train_ill = imgdata.train_ill
+        train_ill = read_triple(Ill_Path)
     else:
         imgdata.train_ill = train_ill
     ent_ill = []
@@ -164,7 +164,7 @@ def read_data(data_path=DATA_PATH, des_dict_path=DES_DICT_PATH):
     entids = list(range(len(index2entity)))
 
     # ent2descriptionTokens
-    Tokenizer = BertTokenizer.from_pretrained('bert-base-multilingual-cased')
+    Tokenizer = BertTokenizer.from_pretrained(model_file)
     if des_dict_path != None:
         ent2desTokens = ent2desTokens_generate(Tokenizer, des_dict_path, [index2entity[id] for id in entid_1],
                                                [index2entity[id] for id in entid_2])

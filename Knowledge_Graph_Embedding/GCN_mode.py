@@ -11,7 +11,8 @@ import torch.optim as optim
 from torch.nn.parameter import Parameter
 import scipy.sparse as sp
 from Param import *
-from Basic_Bert_Unit_model import Basic_Bert_Unit_model
+from GCN_basic_bert_unit.Basic_Bert_Unit_model import Basic_Bert_Unit_model
+
 
 USE_CUDA = torch.cuda.is_available()
 if USE_CUDA:
@@ -105,21 +106,26 @@ class GCN(nn.Module):
 
         self.dropout = dropout
 
-    def forward(self, x, adj):
-        x = F.relu(self.gc1(x, adj))  # change to leaky relu
+    def forward(self, x, feature):
+        x = F.relu(self.gc1(x, feature))  # change to leaky relu
         x = F.dropout(x, self.dropout, training=self.training)
-        x = self.gc2(x, adj)
+        x = self.gc2(x, feature)
         return x
 
 
 class combine_model(nn.Module):
     def __init__(self, ENT_NUM, triples):
-        super(combine_model,self).__init__()
+        super(combine_model, self).__init__()
         n_units = [int(x) for x in UNITS.strip().split(",")]
-        input_dim = int(n_units[0])
-        entity_emb = nn.Embedding(ENT_NUM, input_dim)
-        nn.init.normal_(entity_emb.weight, std=1.0 / math.sqrt(ENT_NUM))
-        entity_emb.requires_grad = True
+
+        # input_dim = int(n_units[0])
+        # entity_emb = nn.Embedding(ENT_NUM, input_dim)
+        # nn.init.normal_(entity_emb.weight, std=1.0 / math.sqrt(ENT_NUM))
+        # entity_emb.requires_grad = True
+        with open(DATA_PATH + "feature/{}_basic.npy".format(LANG), 'rb') as f:
+            d_feature = np.load(f)
+        entity_emb = torch.Tensor(d_feature)
+
         self.entity_emb = entity_emb.cuda(CUDA_NUM)
         self.cross_graph_model = GCN(n_units[0], n_units[1], n_units[2], dropout=0).cuda(CUDA_NUM)
         self.input_idx = torch.LongTensor(np.arange(ENT_NUM)).cuda(CUDA_NUM)
@@ -127,12 +133,35 @@ class combine_model(nn.Module):
         adj = get_adjr(ENT_NUM, triples, norm=True)
         self.adj = adj.cuda(CUDA_NUM)
         self.bert = Basic_Bert_Unit_model(MODEL_INPUT_DIM, MODEL_OUTPUT_DIM).cuda(CUDA_NUM)
+        self.fc = nn.Linear(MODEL_OUTPUT_DIM + n_units[2], MODEL_OUTPUT_DIM)
 
-    def forward(self, batch_word_list, attention_mask,eids):
-        dcb_emb = self.bert(batch_word_list,attention_mask)
-        gph_emb = self.cross_graph_model(self.entity_emb(self.input_idx), self.adj)
+    # def forward(self, batch_word_list, attention_mask, eids):
+    #     dcb_emb = self.bert(batch_word_list, attention_mask)
+    #     input_idx = torch.LongTensor(eids).cuda(CUDA_NUM)
+    #     gph_emb = self.cross_graph_model(self.entity_emb(input_idx), dcb_emb)
+    #     # gph_emb = self.cross_graph_model(self.entity_emb(self.input_idx), self.adj)
+    #     joint_emb = torch.cat([
+    #         F.normalize(dcb_emb),
+    #         F.normalize(gph_emb)
+    #     ], dim=1)
+    #     return joint_emb
+
+    def forward(self, batch_word_list, attention_mask, eids):
+        dcb_emb = self.bert(batch_word_list, attention_mask)
+        gph_emb = self.cross_graph_model(self.entity_emb, self.adj)
         joint_emb = torch.cat([
             F.normalize(dcb_emb),
             F.normalize(gph_emb[eids])
         ], dim=1)
+        joint_emb = self.fc(joint_emb)
         return joint_emb
+
+
+if __name__ == '__main__':
+    with open(DATA_PATH + "feature/ja_basic.npy", 'rb') as f:
+        d_feature = np.load(f)
+    print(type(torch.Tensor(d_feature).cuda(CUDA_NUM)))
+    entity_emb = nn.Embedding(988, 400)
+    nn.init.normal_(entity_emb.weight, std=1.0 / math.sqrt(988))
+    entity_emb.requires_grad = True
+    print(type(entity_emb.cuda(4)))

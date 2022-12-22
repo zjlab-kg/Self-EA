@@ -3,6 +3,7 @@ from Param import *
 
 
 def main():
+    fixed(SEED_NUM)
     print("----------------interaction model--------------------")
     cuda_num = CUDA_NUM
     print("GPU num {}".format(cuda_num))
@@ -42,12 +43,12 @@ def main():
                                 + des_features[i]
                                 + hierarchy_features[i]
                                 )  # 42 concat 42 concat 1.
-        Model = MlP(KERNEL_NUM*2 *2+ 1 + 1, 11).cuda(cuda_num)
+        Model = MlP(KERNEL_NUM * 2 * 2 + 1 + 1, 11).cuda(cuda_num)
 
     else:
         for i in range(len(entity_pairs)):
             all_features.append(nei_features[i] + att_features[i] + des_features[i])  # 42 concat 42 concat 1.
-        Model = MlP(KERNEL_NUM*2 * 2 + 1 , 11).cuda(cuda_num)
+        Model = MlP(KERNEL_NUM * 2 * 2 + 1, 11).cuda(cuda_num)
     print("All features embedding shape: ", np.array(all_features).shape)
 
     Optimizer = optim.Adam(Model.parameters(), lr=LEARNING_RATE)
@@ -62,5 +63,4 @@ def main():
 
 
 if __name__ == '__main__':
-    fixed(SEED_NUM)
     main()

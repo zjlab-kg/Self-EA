@@ -129,8 +129,7 @@ def test_topk_res(index_mat):
     print("")
     MRR/=ent1_num
     print("MRR:{:.5f}".format(MRR))
-
-
+    return topk_list[1 - 1], topk_list[50 - 1]
 
 
 

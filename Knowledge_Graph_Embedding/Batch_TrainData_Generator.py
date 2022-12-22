@@ -6,7 +6,7 @@ import time
 
 
 class Batch_TrainData_Generator(object):
-    def __init__(self,train_ill,ent_ids1,ent_ids2,index2entity,batch_size,neg_num):
+    def __init__(self, train_ill, ent_ids1, ent_ids2, index2entity, batch_size, neg_num):
         self.ent_ill = train_ill
         self.ent_ids1 = ent_ids1
         self.ent_ids2 = ent_ids2
@@ -19,35 +19,30 @@ class Batch_TrainData_Generator(object):
         print("In Batch_TrainData_Generator, ent_ids2 num: {}".format(len(self.ent_ids2)))
         # print("In Batch_TrainData_Generator, keys of index2entity num: {}".format(len(self.index2entity)))
 
-
-
-
-    def train_index_gene(self,candidate_dict):
+    def train_index_gene(self, candidate_dict):
         """
         generate training data (entity_index).
         """
-        train_index = [] #training data
+        train_index = []  # training data
         candid_num = 999999
         for ent in candidate_dict:
-            candid_num = min(candid_num,len(candidate_dict[ent]))
+            candid_num = min(candid_num, len(candidate_dict[ent]))
             candidate_dict[ent] = np.array(candidate_dict[ent])
-        for pe1,pe2 in self.ent_ill:
+        for pe1, pe2 in self.ent_ill:
             for _ in range(self.neg_num):
                 if np.random.rand() <= 0.5:
-                    #e1
+                    # e1
                     ne1 = candidate_dict[pe2][np.random.randint(candid_num)]
                     ne2 = pe2
                 else:
                     ne1 = pe1
                     ne2 = candidate_dict[pe1][np.random.randint(candid_num)]
-                #same check
-                if pe1!=ne1 or pe2!=ne2:
-                    train_index.append([pe1,pe2,ne1,ne2])
+                # same check
+                if pe1 != ne1 or pe2 != ne2:
+                    train_index.append([pe1, pe2, ne1, ne2])
         np.random.shuffle(train_index)
         self.train_index = train_index
-        self.batch_num = int( np.ceil( len(self.train_index) * 1.0 / self.batch_size ) )
-
-
+        self.batch_num = int(np.ceil(len(self.train_index) * 1.0 / self.batch_size))
 
     def __iter__(self):
         return self
@@ -60,14 +55,14 @@ class Batch_TrainData_Generator(object):
             batch_index = self.iter_count
             self.iter_count += 1
 
-            batch_data = self.train_index[batch_index * self.batch_size : (batch_index + 1) * self.batch_size]
+            batch_data = self.train_index[batch_index * self.batch_size: (batch_index + 1) * self.batch_size]
 
-            pe1s = [pe1 for pe1,pe2,ne1,ne2 in batch_data]
-            pe2s = [pe2 for pe1,pe2,ne1,ne2 in batch_data]
-            ne1s = [ne1 for pe1,pe2,ne1,ne2 in batch_data]
-            ne2s = [ne2 for pe1,pe2,ne1,ne2 in batch_data]
+            pe1s = [pe1 for pe1, pe2, ne1, ne2 in batch_data]
+            pe2s = [pe2 for pe1, pe2, ne1, ne2 in batch_data]
+            ne1s = [ne1 for pe1, pe2, ne1, ne2 in batch_data]
+            ne2s = [ne2 for pe1, pe2, ne1, ne2 in batch_data]
 
-            return pe1s,pe2s,ne1s,ne2s
+            return pe1s, pe2s, ne1s, ne2s
 
         else:
             del self.train_index

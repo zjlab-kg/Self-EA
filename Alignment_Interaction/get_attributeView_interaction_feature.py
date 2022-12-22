@@ -68,6 +68,7 @@ def attributeView_interaction_F_gene(ent_pairs, value_emb_list, ent2valueids, va
 
 
 def main():
+    fixed(SEED_NUM)
     print("----------------get attribute view interaction similarity feature--------------------")
     cuda_num = CUDA_NUM
     print("GPU NUM :", cuda_num)
@@ -124,5 +125,4 @@ def main():
     print("save attribute-view similarity Feature in: ",ATTRIBUTEVIEW_SIMILARITY_FEATURE_PATH)
 
 if __name__ == '__main__':
-    fixed(SEED_NUM)
     main()

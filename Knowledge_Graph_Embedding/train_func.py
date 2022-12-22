@@ -25,7 +25,7 @@ def entlist2emb(Model, entids, entid2data, cuda_num):
     batch_token_ids = torch.LongTensor(batch_token_ids).cuda(cuda_num)
     batch_mask_ids = torch.FloatTensor(batch_mask_ids).cuda(cuda_num)
 
-    batch_emb = Model(batch_token_ids, batch_mask_ids,entids)
+    batch_emb = Model(batch_token_ids, batch_mask_ids, entids)
     del batch_token_ids
     del batch_mask_ids
     return batch_emb
@@ -95,8 +95,9 @@ def generate_candidate_dict(Model, train_ent1s, train_ent2s, for_candidate_ent1s
     return candidate_dict
 
 
-def train(Model, Criterion, Optimizer, Train_gene, train_ill, test_ill, entid2data, imgdata,triple):
+def train(Model, Criterion, Optimizer, Train_gene, train_ill, test_ill, entid2data, imgdata, triple):
     print("start training...")
+    last_rate = 0
     for epoch in range(EPOCH_NUM):
         print("+++++++++++")
         print("Epoch: ", epoch)
@@ -119,11 +120,14 @@ def train(Model, Criterion, Optimizer, Train_gene, train_ill, test_ill, entid2da
         torch.cuda.empty_cache()
         print("Epoch {}: loss {:.3f}, using time {:.3f}".format(epoch, epoch_loss, epoch_train_time))
         if epoch >= 0:
-            if epoch != 0:
-                save(Model, train_ill, test_ill, entid2data, triple,epoch)
             # test(Model,train_ill,entid2data,TEST_BATCH_SIZE,context="EVAL IN TRAIN SET")
-            test(Model, test_ill, entid2data, TEST_BATCH_SIZE, context="EVAL IN TEST SET:")
-
+            top1 = test(Model, test_ill, entid2data, TEST_BATCH_SIZE, context="EVAL IN TEST SET:")
+            if epoch == EPOCH_NUM-1:
+                save(Model, train_ill, test_ill, entid2data, triple, epoch)
+            elif EARLY_STOP and top1 < last_rate:
+                save(Model, train_ill, test_ill, entid2data, triple, epoch)
+                break
+            last_rate = top1
         if ITERATIVE and epoch >= ITERA_EPOCH:
             iterative(Model, train_ill, entid2data, imgdata)
 
@@ -154,17 +158,18 @@ def test(Model, ent_ill, entid2data, batch_size, context=""):
         print("Cosine similarity of basic bert unit embedding res:")
         res_mat = cos_sim_mat_generate(emb1, emb2, batch_size, cuda_num=CUDA_NUM)
         score, top_index = batch_topk(res_mat, batch_size, topn=TOPK, largest=True, cuda_num=CUDA_NUM)
-        hit_res(top_index)
+        top1 = hit_res(top_index)
     print("test using time: {:.3f}".format(time.time() - start_time))
     print("--------------------")
+    return top1
 
 
-def save(Model, train_ill, test_ill, entid2data, triple,epoch_num):
+def save(Model, train_ill, test_ill, entid2data, triple, epoch_num):
     print("Model {} save in: ".format(epoch_num),
-          MODEL_SAVE_PATH + MODEL_SAVE_PREFIX + "model_epoch_" + str(epoch_num) + '.p')
+          MODEL_SAVE_PATH + MODEL_SAVE_PREFIX + 'model.p')
     Model.eval()
-    torch.save(Model.state_dict(), MODEL_SAVE_PATH + MODEL_SAVE_PREFIX + "model_epoch_" + str(epoch_num) + '.p')
-    other_data = [train_ill, test_ill, entid2data,triple]
+    torch.save(Model.state_dict(), MODEL_SAVE_PATH + MODEL_SAVE_PREFIX + 'model.p')
+    other_data = [train_ill, test_ill, entid2data, triple]
     pickle.dump(other_data, open(MODEL_SAVE_PATH + MODEL_SAVE_PREFIX + 'other_data.pkl', "wb"))
     print("Model {} save end.".format(epoch_num))
 
@@ -221,15 +226,15 @@ def iterative(Model, train_ill, entid2data, imgdata: img):
     score, top_index = batch_topk(res_mat, batch_size, topn=ITRA_TOPK, largest=True, cuda_num=CUDA_NUM)
     scoreDic = {}
     for i in range(len(top_index)):
-        top =[]
+        top = []
         for k in top_index[i]:
             top.append(ents_2[k])
         scoreDic[ents_1[i]] = top
     remove = 0
-    for (h,t) in train_ill:
+    for (h, t) in train_ill:
         if t not in scoreDic[h]:
-            train_ill.remove((h,t))
-            remove+=1
+            train_ill.remove((h, t))
+            remove += 1
     count = 0
     for link in train_ill:
         if link in imgdata.ills:
@@ -252,12 +257,20 @@ def iterative(Model, train_ill, entid2data, imgdata: img):
             count += 1
             if count == ADDNUM:
                 break
+        originSet = set()
+        if imgdata.last_1 and imgdata.last_2:
+            for link in imgdata.last_2:
+                if link in imgdata.last_1 and link in visual_links:
+                    originSet.add(link)
         count = 0
-        for link in visual_links:
+        originSet -= set(train_ill)
+
+        for link in originSet:
             if link in imgdata.ills:
                 count += 1
-        print('ture count :{}'.format(count))
-        train_ill.extend(visual_links)
+        print('add ture count :{}'.format(count))
+        train_ill.extend(originSet)
+
 
 def imgiterative(Model, train_ill, entid2data, imgdata: img):
     il = np.array(train_ill)
