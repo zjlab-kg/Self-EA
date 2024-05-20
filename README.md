@@ -55,6 +55,9 @@ There are three cross-lingual datasets in folder `data/dbp15k/` , take the datas
 
 - en_att_triples: attribute triples of target KG (EN)
 
+**Download from BaiduYun Drive**
+https://pan.baidu.com/s/1-iQqqWbar9y_MWmchKMcTQ?pwd=d9na
+
 ### Acknowledgement
 Our codes are modified from **BERT-INT**(<https://github.com/kosugi11037/bert-int>). We appreciate the authors for making BERT-INT open-sourced.
 
